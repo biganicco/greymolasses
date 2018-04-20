@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Grey Molasses Simulation
 
@@ -45,8 +44,8 @@ Eb = 6.83468261090429                                       #energy of the F=2 m
 Ee = 4.27167663181519 + 384.2304844685*10**3 - 72.9113*10**(-3)    #energy of the F'=2 manifold 
 
 #Initialize lasers parameters
-DeltaRC = 2*np.pi*6834.6*10**(-3)
-gamma = 2*np.pi*6.065*10**(-3)
+gamma = 6.065*10**(-3)
+DeltaRC = 6.8346-10*10**(-3)
 omega_R = 5*gamma+Ee
 #RabiR = 1.2*gamma
 #RabiC = 4.2*gamma
@@ -55,17 +54,17 @@ RabiR = 1.2*gamma
 RabiC = 4.2*gamma
 
 #Hamiltonians
-H0 = np.matrix(np.zeros((StatesNumber,StatesNumber))) #Initialize the free Hamiltonian
+H0 = np.matrix(np.zeros((StatesNumber,StatesNumber),dtype=complex)) #Initialize the free Hamiltonian
 for i in range(0,m_Fdark-1):
     H0[i,i]=Ed
 for i in range(m_Fdark,m_Fdark+m_Fbright):
     H0[i,i]=Eb-DeltaRC
 for i in range(m_Fdark+m_Fbright,StatesNumber):
     H0[i,i]=Ee-omega_R
-H = np.matrix(np.zeros((StatesNumber,StatesNumber)))
-Hp1 = np.matrix(np.zeros((StatesNumber,StatesNumber))) #Initialize the interaction Hamiltonian with \sigma_+ light
-Hp0 = np.matrix(np.zeros((StatesNumber,StatesNumber))) #Initialize the interaction Hamiltonian with \pi light
-Hm1 = np.matrix(np.zeros((StatesNumber,StatesNumber))) #Initialize the interaction Hamiltonian with \sigma_- light
+H = np.matrix(np.zeros((StatesNumber,StatesNumber),dtype=complex))
+Hp1 = np.matrix(np.zeros((StatesNumber,StatesNumber),dtype=complex)) #Initialize the interaction Hamiltonian with \sigma_+ light
+Hp0 = np.matrix(np.zeros((StatesNumber,StatesNumber),dtype=complex)) #Initialize the interaction Hamiltonian with \pi light
+Hm1 = np.matrix(np.zeros((StatesNumber,StatesNumber),dtype=complex)) #Initialize the interaction Hamiltonian with \sigma_- light
 
 #Brute force interaction matrix elements
 Hm1[0,8] = 4**(-0.5)*RabiR
@@ -116,13 +115,13 @@ Hp0[11,6] = 24**(-0.5)*RabiC
 Hp0[12,7] = 6**(-0.5)*RabiC
 
 DeltaKZ = 0.001
-Limit = np.pi
+Limit = np.pi/2
 steps = np.int(Limit/(DeltaKZ))
 KZ = np.zeros((steps,))
 for i in range(0,steps-1):
     KZ[i] = i*DeltaKZ
 
-Energies = np.zeros((StatesNumber,steps))
+Energies = np.zeros((StatesNumber,steps),dtype=complex)
 for t in range(0,steps-1):
     k = Limit*t/steps
     for i in range(0,StatesNumber-1):
@@ -134,10 +133,11 @@ for t in range(0,steps-1):
             elif i<j:
                 H[i,j] = H0[i,j] + np.exp(-1j*np.pi/4)*(Hp1[i,j]*(np.cos(k)-np.sin(k))-1j*Hm1[i,j]*(np.cos(k)+np.sin(k)))
     Energies[:,t], holder = np.linalg.eigh(H)
-    H = np.matrix(np.zeros((StatesNumber,StatesNumber)))
-    
-plt.plot(KZ,Energies[0,:],'r.',KZ,Energies[1,:],'r.',KZ,Energies[2,:],'r.',KZ,Energies[3,:],'r.',KZ,Energies[4,:],'r.',KZ,Energies[5,:],'r.',KZ,Energies[6,:],'r.',KZ,Energies[7,:],'r.',KZ,Energies[8,:],'r.',KZ,Energies[9,:],'r.',KZ,Energies[10,:],'r.',KZ,Energies[11,:],'r.',KZ,Energies[12,:],'r.')
+    H = np.matrix(np.zeros((StatesNumber,StatesNumber),dtype=complex))
+Energies = Energies/gamma
+plt.plot(KZ,Energies[0,:],'r.',KZ,Energies[1,:],'g.',KZ,Energies[2,:],'b.',KZ,Energies[3,:],'k.',KZ,Energies[4,:],'y.',KZ,Energies[5,:],'m.',KZ,Energies[6,:],'r.',KZ,Energies[7,:],'g.',KZ,Energies[8,:],'r.',KZ,Energies[9,:],'g.',KZ,Energies[10,:],'y.',KZ,Energies[11,:],'b.',KZ,Energies[12,:],'k.')
 #plt.ylim([-36.10855,-36.10835])
-plt.ylim([-0.001,0.003])
-#plt.ylim([0.001,0.0015])
+#plt.ylim([-0.0001,0.0025])
+#plt.ylim([1.5,2.5])
+
 plt.show()
