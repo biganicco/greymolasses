@@ -4,11 +4,12 @@ Grey Molasses Simulation
 Will Lab, Columbia University Physics Department
 
 Date created: 27 March 2018
-Last edited: 18 April 2018
-Last edited by: Niccolò 
+Last edited: 25 April 2018
+Last edited by: Claire and Niccolò 
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from numpy import linalg as LA
 
 #Initialize the molasses states
 Fdark = 1
@@ -39,20 +40,24 @@ for i in range(m_Fdark+m_Fbright,StatesNumber):
     StLab[2,i] = -Fexcited-(m_Fdark+m_Fbright)+i
     
 #Initialize the unperturbed energies [GHz] - zero set at lowest energy
+gamma = 9.7946*10**(-3)
+D2 = 508.8487162*10**3
+F1F1S12 = 1.7716261288
+F1hfs = 1.10726633050
+F2hfs = 0.66435979830
+F2phfs = 15.944*10**(-3)
 Ed = 0                                                      #energy of the F=1 manifold 
-Eb = 6.83468261090429                                       #energy of the F=2 manifold 
-Ee = 4.27167663181519 + 384.2304844685*10**3 - 72.9113*10**(-3)    #energy of the F'=2 manifold 
+Eb = F1F1S12                                    #energy of the F=2 manifold 
+Ee = D2 + F1hfs - F2phfs    #energy of the F'=2 manifold 
 
 #Initialize lasers parameters
-gamma = 6.065*10**(-3)
-DeltaRC = 6.8346-10*10**(-3)
-omega_R = 5*gamma+Ee
-#RabiR = 1.2*gamma
-#RabiC = 4.2*gamma
-
-RabiR = 1.2*gamma
-RabiC = 4.2*gamma
-
+delta = 0.1*gamma
+Delta = 2.4*gamma
+omega_R = D2 + F1hfs - F2phfs + delta + Delta
+omega_C = D2 - F2hfs - F2phfs + Delta
+DeltaRC = omega_R-omega_C
+RabiR = gamma*(5/2)**0.5
+RabiC = gamma*(2*5/2)**0.5
 #Hamiltonians
 H0 = np.matrix(np.zeros((StatesNumber,StatesNumber),dtype=complex)) #Initialize the free Hamiltonian
 for i in range(0,m_Fdark-1):
@@ -114,30 +119,64 @@ Hp0[10,5] = 0*RabiC
 Hp0[11,6] = 24**(-0.5)*RabiC
 Hp0[12,7] = 6**(-0.5)*RabiC
 
-DeltaKZ = 0.001
-Limit = np.pi/2
+DeltaKZ = 0.05
+Limit = np.pi
 steps = np.int(Limit/(DeltaKZ))
 KZ = np.zeros((steps,))
 for i in range(0,steps-1):
     KZ[i] = i*DeltaKZ
-
+holder = np.zeros((StatesNumber,StatesNumber),dtype=complex)
 Energies = np.zeros((StatesNumber,steps),dtype=complex)
-for t in range(0,steps-1):
-    k = Limit*t/steps
-    for i in range(0,StatesNumber-1):
-        for j in range(0,StatesNumber-1):
-            if i == j:
-                H[i,j] = H0[i,j] + Hp1[i,j] + Hm1[i,j] + Hp0[i,j]
-            elif i>j:
-                H[i,j] = H0[i,j] + np.exp(1j*np.pi/4)*(Hp1[i,j]*(np.cos(k)-np.sin(k))+1j*Hm1[i,j]*(np.cos(k)+np.sin(k)))
-            elif i<j:
-                H[i,j] = H0[i,j] + np.exp(-1j*np.pi/4)*(Hp1[i,j]*(np.cos(k)-np.sin(k))-1j*Hm1[i,j]*(np.cos(k)+np.sin(k)))
-    Energies[:,t], holder = np.linalg.eigh(H)
-    H = np.matrix(np.zeros((StatesNumber,StatesNumber),dtype=complex))
+EnergiesReal = np.zeros((StatesNumber,steps))
+Weights = EnergiesReal = np.zeros((StatesNumber,steps,3))
+with open('Eigenenergies and eigenvectors.txt','wb') as ftext:
+    for t in range(0,steps):
+        k = Limit*t/steps
+        for i in range(0,StatesNumber):
+            for j in range(0,StatesNumber):
+                if i == j:
+                    H[i,j] = H0[i,j] + Hp1[i,j] + Hm1[i,j] + Hp0[i,j]
+                elif i>j:
+                    H[i,j] = H0[i,j] + np.exp(1j*np.pi/4)*(Hp1[i,j]*(np.cos(k)-np.sin(k))+1j*Hm1[i,j]*(np.cos(k)+np.sin(k)))
+                elif i<j:
+                    H[i,j] = H0[i,j] + np.exp(-1j*np.pi/4)*(Hp1[i,j]*(np.cos(k)-np.sin(k))-1j*Hm1[i,j]*(np.cos(k)+np.sin(k)))
+        Energies[:,t], holder = LA.eigh(H)     
+        Energy = Energies[:,t]/gamma
+        for l in range(0,StatesNumber):
+            for y in range(0,StatesNumber):
+                if np.absolute(holder[l,y]) <0.01:
+                    holder[l,y] = 0
+        if t<steps-2:
+            H = np.matrix(np.zeros((StatesNumber,StatesNumber),dtype=complex))
+        f = np.savetxt(ftext,np.abs(Energies[:,t]),fmt='%.4e',delimiter=',', header='Eigenenergies at kz='+np.str(k)+': ')
+        C_B_drk = np.zeros((StatesNumber), dtype = int)
+        C_G_brt = np.zeros((StatesNumber), dtype = int)
+        C_R_exc = np.zeros((StatesNumber), dtype = int)
+        Colour = []
+        for l in range(0,StatesNumber):
+            Weights[l,t,0] = holder[0,l]*np.conj(holder[0,l])+holder[1,l]*np.conj(holder[1,l])+holder[2,l]*np.conj(holder[2,l])
+            Weights[l,t,1] = holder[3,l]*np.conj(holder[3,l])+holder[4,l]*np.conj(holder[4,l])+holder[5,l]*np.conj(holder[5,l])+holder[6,l]*np.conj(holder[6,l])+holder[7,l]*np.conj(holder[7,l])
+            Weights[l,t,2] = holder[8,l]*np.conj(holder[8,l])+holder[9,l]*np.conj(holder[9,l])+holder[10,l]*np.conj(holder[10,l])+holder[11,l]*np.conj(holder[11,l])+holder[12,l]*np.conj(holder[12,l])
+            C_B_drk[l] = int(round(255*Weights[l,t,0]))
+            C_G_brt[l] = int(round(255*Weights[l,t,1]))
+            C_R_exc[l] = int(round(255*Weights[l,t,2]))
+            Colour.append( '#%02x%02x%02x' % (C_R_exc[l], C_G_brt[l], C_B_drk[l]))
+        for l in range(StatesNumber):
+            plt.scatter([k], Energy[l], c = Colour[l], marker = "." )
+        #print(Colour)
+        #plt.plot([k],Energy[0],'r.',[k],Energy[1],'g.',[k],Energy[2],'b.',[k],Energy[3],'k.',[k],Energy[4],'y.',[k],Energy[5],'m.',[k],Energy[6],'r.',[k],Energy[7],'g.',[k],Energy[8],'r.',[k],Energy[9],'g.',[k],Energy[10],'y.',[k],Energy[11],'b.',[k],Energy[12],'k.')
+for l in range(StatesNumber):
+    for y in range(0,steps-1):
+        if np.imag(Energies[l,y])<0.00000001:
+            EnergiesReal[l,y] = np.real(Energies[l,y])
+        else:
+            print('Imaginary energy value found')
+EnergiesReal = EnergiesReal/gamma
 Energies = Energies/gamma
-plt.plot(KZ,Energies[0,:],'r.',KZ,Energies[1,:],'g.',KZ,Energies[2,:],'b.',KZ,Energies[3,:],'k.',KZ,Energies[4,:],'y.',KZ,Energies[5,:],'m.',KZ,Energies[6,:],'r.',KZ,Energies[7,:],'g.',KZ,Energies[8,:],'r.',KZ,Energies[9,:],'g.',KZ,Energies[10,:],'y.',KZ,Energies[11,:],'b.',KZ,Energies[12,:],'k.')
+#plt.plot(KZ,Energies[0,:],'r.',KZ,Energies[1,:],'g.',KZ,Energies[2,:],'b.',KZ,Energies[3,:],'k.',KZ,Energies[4,:],'y.',KZ,Energies[5,:],'m.',KZ,Energies[6,:],'r.',KZ,Energies[7,:],'g.',KZ,Energies[8,:],'r.',KZ,Energies[9,:],'g.',KZ,Energies[10,:],'y.',KZ,Energies[11,:],'b.',KZ,Energies[12,:],'k.')
+#plt.plot(KZ,EnergiesReal[0,:],'r.',KZ,EnergiesReal[1,:],'r.',KZ,EnergiesReal[2,:],'r.',KZ,EnergiesReal[3,:],'r.',KZ,EnergiesReal[4,:],'r.',KZ,EnergiesReal[5,:],'r.',KZ,EnergiesReal[6,:],'r.',KZ,EnergiesReal[7,:],'r.',KZ,EnergiesReal[8,:],'r.',KZ,EnergiesReal[9,:],'r.',KZ,EnergiesReal[10,:],'r.',KZ,EnergiesReal[11,:],'r.',KZ,EnergiesReal[12,:],'r.')
 #plt.ylim([-36.10855,-36.10835])
 #plt.ylim([-0.0001,0.0025])
-#plt.ylim([1.5,2.5])
+plt.ylim([-0.2,0.7])
 
-plt.show()
+plt.show()  
